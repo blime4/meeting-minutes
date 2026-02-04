@@ -28,7 +28,7 @@ on:
         options:
           - aarch64  # Apple Silicon
           - x86_64   # Intel
-          - both     # Universal binary (both)
+          - both     # Both architectures (separate builds)
         default: aarch64
 
 # Cancel duplicate workflow runs
@@ -42,7 +42,7 @@ env:
 
 jobs:
   build-macos:
-    name: Build macOS (${{ github.event.inputs.build-arch == 'x86_64' && 'Intel' || github.event.inputs.build-arch == 'both' && 'Universal' || 'Apple Silicon' }})
+    name: Build macOS (${{ github.event.inputs.build-arch == 'x86_64' && 'Intel' || github.event.inputs.build-arch == 'both' && 'Multi-Arch (Apple Silicon + Intel)' || 'Apple Silicon' }})
     runs-on: macos-latest
     permissions:
       contents: write
