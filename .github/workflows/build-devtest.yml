@@ -35,8 +35,8 @@ jobs:
         include:
           - platform: macos-latest
             platform-name: macOS
-            target: aarch64-apple-darwin
-            args: --target aarch64-apple-darwin
+            target: "aarch64-apple-darwin,x86_64-apple-darwin"
+            args: --target aarch64-apple-darwin --target x86_64-apple-darwin
           - platform: windows-latest
             platform-name: Windows
             target: x86_64-pc-windows-msvc
