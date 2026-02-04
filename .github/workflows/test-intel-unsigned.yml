@@ -50,6 +50,32 @@ jobs:
         with:
           targets: ${{ github.event.inputs.test-type == 'both' && 'x86_64-apple-darwin,aarch64-apple-darwin' || github.event.inputs.test-type == 'intel' && 'x86_64-apple-darwin' || 'aarch64-apple-darwin' }}
 
+      - name: Build llama-helper sidecar for Intel Mac
+        if: ${{ github.event.inputs.test-type == 'intel' || github.event.inputs.test-type == 'both' }}
+        run: |
+          echo "Building llama-helper sidecar for Intel Mac..."
+          cargo build --release -p llama-helper --features metal --target x86_64-apple-darwin
+
+          # Create binaries directory and copy binary
+          mkdir -p frontend/src-tauri/binaries
+          cp target/x86_64-apple-darwin/release/llama-helper frontend/src-tauri/binaries/llama-helper-x86_64-apple-darwin
+
+          echo "✓ llama-helper built for x86_64-apple-darwin"
+          ls -la frontend/src-tauri/binaries/
+
+      - name: Build llama-helper sidecar for Apple Silicon
+        if: ${{ github.event.inputs.test-type == 'apple-silicon' || github.event.inputs.test-type == 'both' }}
+        run: |
+          echo "Building llama-helper sidecar for Apple Silicon..."
+          cargo build --release -p llama-helper --features metal --target aarch64-apple-darwin
+
+          # Create binaries directory and copy binary
+          mkdir -p frontend/src-tauri/binaries
+          cp target/aarch64-apple-darwin/release/llama-helper frontend/src-tauri/binaries/llama-helper-aarch64-apple-darwin
+
+          echo "✓ llama-helper built for aarch64-apple-darwin"
+          ls -la frontend/src-tauri/binaries/
+
       - name: Install frontend dependencies
         run: |
           cd frontend
