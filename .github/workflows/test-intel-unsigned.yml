@@ -89,6 +89,8 @@ jobs:
       # 为 Intel Mac 构建
       - name: Build Tauri app - Intel (unsigned)
         if: ${{ github.event.inputs.test-type == 'intel' || github.event.inputs.test-type == 'both' }}
+        env:
+          TAURI_BUNDLE_CREATE_UPDATER_ARTIFACTS: "false"
         run: |
           cd frontend
           pnpm run tauri build --target x86_64-apple-darwin
@@ -96,6 +98,8 @@ jobs:
       # 为 Apple Silicon 构建
       - name: Build Tauri app - Apple Silicon (unsigned)
         if: ${{ github.event.inputs.test-type == 'apple-silicon' || github.event.inputs.test-type == 'both' }}
+        env:
+          TAURI_BUNDLE_CREATE_UPDATER_ARTIFACTS: "false"
         run: |
           cd frontend
           pnpm run tauri build --target aarch64-apple-darwin
