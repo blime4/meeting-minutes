@@ -14,10 +14,10 @@ on:
         type: boolean
         default: true
   pull_request:
-    paths:
-      - '.github/workflows/**'
-      - 'frontend/**'
-      - 'frontend/src-tauri/**'
+    types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - feature/macos-intel-support
 
 # Cancel duplicate workflow runs
 concurrency:
