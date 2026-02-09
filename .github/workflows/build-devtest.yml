@@ -478,24 +478,42 @@ jobs:
             Get-AuthenticodeSignature -FilePath "$msiPath" | Format-List
           }
 
+      - name: Prepare artifact paths
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.upload-artifacts == 'true'
+        id: artifact-paths
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ matrix.platform }}" == *"macos"* ]]; then
+            cat <<'EOF' >> "$GITHUB_OUTPUT"
+paths=target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+target/${{ matrix.target }}/release/bundle/macos/*.app
+target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz
+target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz.sig
+EOF
+          elif [[ "${{ matrix.platform }}" == *"windows"* ]]; then
+            cat <<'EOF' >> "$GITHUB_OUTPUT"
+paths=target/${{ matrix.target }}/release/bundle/msi/*.msi
+target/${{ matrix.target }}/release/bundle/msi/*.msi.sig
+target/${{ matrix.target }}/release/bundle/nsis/*.exe
+target/${{ matrix.target }}/release/bundle/nsis/*.exe.sig
+EOF
+          else
+            cat <<'EOF' >> "$GITHUB_OUTPUT"
+paths=target/${{ matrix.target }}/release/bundle/deb/*.deb
+target/${{ matrix.target }}/release/bundle/appimage/*.AppImage
+target/${{ matrix.target }}/release/bundle/rpm/*.rpm
+EOF
+          fi
+
       # Upload artifacts
       - name: Upload artifacts
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.upload-artifacts == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: meetily-devtest-${{ matrix.platform-name }}-${{ matrix.target }}-${{ steps.get-version.outputs.version }}
-          path: |
-            target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
-            target/aarch64-apple-darwin/release/bundle/macos/*.app
-            target/aarch64-apple-darwin/release/bundle/macos/*.app.tar.gz
-            target/aarch64-apple-darwin/release/bundle/macos/*.app.tar.gz.sig
-            target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
-            target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi.sig
-            target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
-            target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe.sig
-            target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb
-            target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage
-            target/x86_64-unknown-linux-gnu/release/bundle/rpm/*.rpm
+          path: ${{ steps.artifact-paths.outputs.paths }}
           retention-days: 14
 
       # Generate summary
