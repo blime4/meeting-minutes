@@ -486,25 +486,25 @@ jobs:
           set -euo pipefail
 
           if [[ "${{ matrix.platform }}" == *"macos"* ]]; then
-            cat <<'EOF' >> "$GITHUB_OUTPUT"
-paths=target/${{ matrix.target }}/release/bundle/dmg/*.dmg
-target/${{ matrix.target }}/release/bundle/macos/*.app
-target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz
-target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz.sig
-EOF
+            printf '%s\n' \
+              "paths=target/${{ matrix.target }}/release/bundle/dmg/*.dmg" \
+              "target/${{ matrix.target }}/release/bundle/macos/*.app" \
+              "target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz" \
+              "target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz.sig" \
+              >> "$GITHUB_OUTPUT"
           elif [[ "${{ matrix.platform }}" == *"windows"* ]]; then
-            cat <<'EOF' >> "$GITHUB_OUTPUT"
-paths=target/${{ matrix.target }}/release/bundle/msi/*.msi
-target/${{ matrix.target }}/release/bundle/msi/*.msi.sig
-target/${{ matrix.target }}/release/bundle/nsis/*.exe
-target/${{ matrix.target }}/release/bundle/nsis/*.exe.sig
-EOF
+            printf '%s\n' \
+              "paths=target/${{ matrix.target }}/release/bundle/msi/*.msi" \
+              "target/${{ matrix.target }}/release/bundle/msi/*.msi.sig" \
+              "target/${{ matrix.target }}/release/bundle/nsis/*.exe" \
+              "target/${{ matrix.target }}/release/bundle/nsis/*.exe.sig" \
+              >> "$GITHUB_OUTPUT"
           else
-            cat <<'EOF' >> "$GITHUB_OUTPUT"
-paths=target/${{ matrix.target }}/release/bundle/deb/*.deb
-target/${{ matrix.target }}/release/bundle/appimage/*.AppImage
-target/${{ matrix.target }}/release/bundle/rpm/*.rpm
-EOF
+            printf '%s\n' \
+              "paths=target/${{ matrix.target }}/release/bundle/deb/*.deb" \
+              "target/${{ matrix.target }}/release/bundle/appimage/*.AppImage" \
+              "target/${{ matrix.target }}/release/bundle/rpm/*.rpm" \
+              >> "$GITHUB_OUTPUT"
           fi
 
       # Upload artifacts
