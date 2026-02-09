@@ -580,6 +580,20 @@ jobs:
           echo "Copied llama-helper to frontend/src-tauri/binaries/llama-helper-$TARGET"
           ls -la frontend/src-tauri/binaries/
 
+      - name: Disable code signing env for unsigned builds
+        if: inputs.sign-binaries != true
+        run: |
+          echo "APPLE_ID=" >> $GITHUB_ENV
+          echo "APPLE_ID_PASSWORD=" >> $GITHUB_ENV
+          echo "APPLE_PASSWORD=" >> $GITHUB_ENV
+          echo "APPLE_TEAM_ID=" >> $GITHUB_ENV
+          echo "APPLE_CERTIFICATE=" >> $GITHUB_ENV
+          echo "APPLE_CERTIFICATE_PASSWORD=" >> $GITHUB_ENV
+          echo "APPLE_SIGNING_IDENTITY=" >> $GITHUB_ENV
+          echo "TAURI_SIGNING_PRIVATE_KEY=" >> $GITHUB_ENV
+          echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=" >> $GITHUB_ENV
+          echo "TAURI_BUNDLE_CREATE_UPDATER_ARTIFACTS=false" >> $GITHUB_ENV
+
       - name: Build with Tauri
         id: tauri-build
         uses: tauri-apps/tauri-action@v0
