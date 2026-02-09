@@ -62,8 +62,44 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        continue-on-error: true
         with:
           fetch-depth: 0
+
+      - name: Ensure repository checkout
+        shell: bash
+        env:
+          REPO: ${{ github.repository }}
+          REF: ${{ github.ref }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          if git rev-parse --verify HEAD >/dev/null 2>&1; then
+            echo "Checkout succeeded."
+            exit 0
+          fi
+
+          echo "Checkout failed; retrying with manual fetch."
+          rm -rf .git
+          git init .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git"
+
+          if [[ -z "${REF}" ]]; then
+            REF="HEAD"
+          fi
+
+          for i in 1 2 3; do
+            if git fetch --no-tags --prune origin "${REF}" && git checkout FETCH_HEAD; then
+              echo "Manual checkout succeeded on attempt ${i}."
+              exit 0
+            fi
+            echo "Manual checkout attempt ${i} failed; retrying..."
+            sleep $((i * 5))
+          done
+
+          echo "Manual checkout failed after retries."
+          exit 1
 
       - name: Get version from tauri.conf.json
         id: get-version
