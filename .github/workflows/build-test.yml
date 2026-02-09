@@ -40,6 +40,7 @@ jobs:
       target: ${{ matrix.target }}
       build-args: ${{ matrix.args }}
       sign-binaries: false
+      enable-updater-signing: false
       asset-prefix: "meetily-test"
       upload-artifacts: true
       is-debug-build: ${{ contains(matrix.args, '--debug') }}

@@ -39,9 +39,13 @@ jobs:
       matrix:
         include:
           - platform: macos-latest
-            platform-name: macOS
-            target: "aarch64-apple-darwin,x86_64-apple-darwin"
-            args: --target aarch64-apple-darwin --target x86_64-apple-darwin
+            platform-name: macOS (Apple Silicon)
+            target: "aarch64-apple-darwin"
+            args: --target aarch64-apple-darwin
+          - platform: macos-latest
+            platform-name: macOS (Intel)
+            target: "x86_64-apple-darwin"
+            args: --target x86_64-apple-darwin
           - platform: windows-latest
             platform-name: Windows
             target: x86_64-pc-windows-msvc
@@ -352,8 +356,8 @@ jobs:
             LLAMA_FEATURES="--features metal"
             echo "Using Metal GPU acceleration for macOS"
           elif [[ "${{ matrix.platform }}" == *"windows"* ]]; then
-            LLAMA_FEATURES="--features vulkan"
-            echo "Using Vulkan GPU acceleration for Windows"
+            LLAMA_FEATURES=""
+            echo "Using CPU-only mode for Windows"
           else
             echo "Using CPU-only mode for Linux"
           fi
@@ -388,10 +392,10 @@ jobs:
           APPLE_CERTIFICATE: ${{ contains(matrix.platform, 'macos') && secrets.APPLE_CERTIFICATE || '' }}
           APPLE_CERTIFICATE_PASSWORD: ${{ contains(matrix.platform, 'macos') && secrets.APPLE_CERTIFICATE_PASSWORD || '' }}
           APPLE_SIGNING_IDENTITY: ${{ contains(matrix.platform, 'macos') && env.CERT_ID || '' }}
-          # Tauri updater signing (enabled only when private key is available)
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
-          TAURI_BUNDLE_CREATE_UPDATER_ARTIFACTS: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' && 'true' || 'false' }}
+          # Tauri updater signing (enabled only when explicitly signing the build and key is available)
+          TAURI_SIGNING_PRIVATE_KEY: ${{ github.event.inputs.sign-build == 'true' && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ github.event.inputs.sign-build == 'true' && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
+          TAURI_BUNDLE_CREATE_UPDATER_ARTIFACTS: ${{ github.event.inputs.sign-build == 'true' && secrets.TAURI_SIGNING_PRIVATE_KEY != '' && 'true' || 'false' }}
           # License validation RSA public key (embedded at build time)
           MEETILY_RSA_PUBLIC_KEY: ${{ secrets.MEETILY_RSA_PUBLIC_KEY }}
           # Supabase configuration (for online license verification)
@@ -407,10 +411,10 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Tauri updater signing (enabled only when private key is available)
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
-          TAURI_BUNDLE_CREATE_UPDATER_ARTIFACTS: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' && 'true' || 'false' }}
+          # Tauri updater signing (disabled for unsigned builds)
+          TAURI_SIGNING_PRIVATE_KEY: ''
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''
+          TAURI_BUNDLE_CREATE_UPDATER_ARTIFACTS: 'false'
           # License validation RSA public key (embedded at build time)
           MEETILY_RSA_PUBLIC_KEY: ${{ secrets.MEETILY_RSA_PUBLIC_KEY }}
           # Supabase configuration (for online license verification)

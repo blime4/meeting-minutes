@@ -32,6 +32,10 @@ on:
         required: false
         type: boolean
         default: false
+      enable-updater-signing:
+        required: false
+        type: boolean
+        default: false
       repository:
         required: false
         type: string
@@ -589,10 +593,10 @@ jobs:
           APPLE_CERTIFICATE_PASSWORD: ${{ inputs.sign-binaries && secrets.APPLE_CERTIFICATE_PASSWORD || '' }}
           APPLE_SIGNING_IDENTITY: ${{ inputs.sign-binaries && env.CERT_ID || '' }}
           # Tauri updater signing (enabled only when sign-binaries=true AND private key is available)
-          TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.sign-binaries && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.sign-binaries && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
-          # Only create updater artifacts when both sign-binaries=true and private key exists
-          TAURI_BUNDLE_CREATE_UPDATER_ARTIFACTS: ${{ inputs.sign-binaries && secrets.TAURI_SIGNING_PRIVATE_KEY != '' && 'true' || 'false' }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.enable-updater-signing == true && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.enable-updater-signing == true && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
+          # Only create updater artifacts when updater signing is explicitly enabled and private key exists
+          TAURI_BUNDLE_CREATE_UPDATER_ARTIFACTS: ${{ inputs.enable-updater-signing == true && secrets.TAURI_SIGNING_PRIVATE_KEY != '' && 'true' || 'false' }}
           # License validation RSA public key (embedded at build time)
           MEETILY_RSA_PUBLIC_KEY: ${{ secrets.MEETILY_RSA_PUBLIC_KEY }}
           # Supabase configuration (for online license verification)
