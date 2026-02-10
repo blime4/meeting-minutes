@@ -407,7 +407,9 @@ jobs:
             echo "::warning::TAURI_SIGNING_PRIVATE_KEY secret not configured - disabling updater artifacts"
             # Disable createUpdaterArtifacts in tauri.conf.json so Tauri doesn't
             # attempt to sign update bundles without a private key
-            python3 << 'PYEOF'
+            # Use python3 with fallback to python (Windows compatibility)
+            PYTHON_CMD=$(command -v python3 || command -v python)
+            $PYTHON_CMD << 'PYEOF'
 import json
 conf_path = "frontend/src-tauri/tauri.conf.json"
 with open(conf_path, "r") as f:
