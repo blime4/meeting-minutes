@@ -60,19 +60,19 @@ jobs:
           echo "✓ Testing build for: ${{ github.event.inputs.test-type }}"
           echo "✓ Build will NOT be code-signed (for testing only)"
 
-      # 为 Intel Mac 构建
+      # 为 Intel Mac 构建 (unsigned - disable updater artifacts since no signing key)
       - name: Build Tauri app - Intel (unsigned)
         if: ${{ github.event.inputs.test-type == 'intel' || github.event.inputs.test-type == 'both' }}
         run: |
           cd frontend
-          pnpm run tauri build --target x86_64-apple-darwin
+          pnpm run tauri build -- --target x86_64-apple-darwin --config '{"bundle":{"createUpdaterArtifacts":false}}'
 
-      # 为 Apple Silicon 构建
+      # 为 Apple Silicon 构建 (unsigned - disable updater artifacts since no signing key)
       - name: Build Tauri app - Apple Silicon (unsigned)
         if: ${{ github.event.inputs.test-type == 'apple-silicon' || github.event.inputs.test-type == 'both' }}
         run: |
           cd frontend
-          pnpm run tauri build --target aarch64-apple-darwin
+          pnpm run tauri build -- --target aarch64-apple-darwin --config '{"bundle":{"createUpdaterArtifacts":false}}'
 
       - name: Verify build output
         run: |
