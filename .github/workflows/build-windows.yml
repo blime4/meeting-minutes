@@ -662,16 +662,33 @@ jobs:
 
       # Conditionally export Tauri updater signing key (only if secret is configured)
       # This avoids setting TAURI_SIGNING_PRIVATE_KEY to empty string, which causes
-      # Tauri to fail with "Missing comment in secret key" error
+      # Tauri to fail with "Missing comment in secret key" error.
+      # When no signing key is available, we also disable createUpdaterArtifacts
+      # in tauri.conf.json to prevent Tauri from failing when it tries to sign update bundles.
       - name: Configure Tauri updater signing
         shell: bash
         run: |
           if [ -n "$TAURI_KEY" ]; then
             echo "TAURI_SIGNING_PRIVATE_KEY=$TAURI_KEY" >> $GITHUB_ENV
             echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=$TAURI_KEY_PASSWORD" >> $GITHUB_ENV
-            echo "::notice::Tauri updater signing key configured"
+            echo "::notice::Tauri updater signing key configured - updater artifacts will be signed"
           else
-            echo "::warning::TAURI_SIGNING_PRIVATE_KEY secret not configured - updater .sig files will NOT be generated"
+            echo "::warning::TAURI_SIGNING_PRIVATE_KEY secret not configured - disabling updater artifacts"
+            # Disable createUpdaterArtifacts in tauri.conf.json so Tauri doesn't
+            # attempt to sign update bundles without a private key
+            python3 << 'PYEOF'
+import json
+conf_path = "frontend/src-tauri/tauri.conf.json"
+with open(conf_path, "r") as f:
+    conf = json.load(f)
+if "bundle" in conf:
+    conf["bundle"]["createUpdaterArtifacts"] = False
+with open(conf_path, "w") as f:
+    json.dump(conf, f, indent=2)
+    f.write("\n")
+print("Updated createUpdaterArtifacts to false")
+PYEOF
+            echo "::notice::Set createUpdaterArtifacts=false in tauri.conf.json"
           fi
         env:
           TAURI_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
