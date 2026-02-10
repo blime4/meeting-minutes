@@ -646,7 +646,7 @@ jobs:
           # llama-helper is for LLM inference and works fine on CPU
           Write-Host "Building llama-helper sidecar (CPU-only)..."
 
-          cargo build --release -p llama-helper
+          cargo build --release -p llama-helper --target x86_64-pc-windows-msvc
 
           if ($LASTEXITCODE -ne 0) {
             Write-Error "Failed to build llama-helper"
@@ -655,7 +655,7 @@ jobs:
 
           # Copy binary to binaries directory
           New-Item -ItemType Directory -Force -Path "frontend/src-tauri/binaries" | Out-Null
-          Copy-Item "target/release/llama-helper.exe" -Destination "frontend/src-tauri/binaries/llama-helper-x86_64-pc-windows-msvc.exe"
+          Copy-Item "target/x86_64-pc-windows-msvc/release/llama-helper.exe" -Destination "frontend/src-tauri/binaries/llama-helper-x86_64-pc-windows-msvc.exe"
 
           Write-Host "Copied llama-helper to frontend/src-tauri/binaries/"
           Get-ChildItem "frontend/src-tauri/binaries/"

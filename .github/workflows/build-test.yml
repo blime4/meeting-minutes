@@ -10,11 +10,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: "macos-latest" # for Apple Silicon and Intel
-            args: "--target aarch64-apple-darwin"
+          - platform: "macos-latest" # for Apple Silicon
+            args: ""
             target: "aarch64-apple-darwin"
           - platform: "macos-latest" # Intel Mac
-            args: "--target x86_64-apple-darwin"
+            args: ""
             target: "x86_64-apple-darwin"
           - platform: "ubuntu-22.04" # Build .deb on 22.04
             args: "--bundles deb"
