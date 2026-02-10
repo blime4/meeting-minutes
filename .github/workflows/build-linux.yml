@@ -216,18 +216,7 @@ jobs:
             # attempt to sign update bundles without a private key
             # Use python3 with fallback to python (Windows compatibility)
             PYTHON_CMD=$(command -v python3 || command -v python)
-            $PYTHON_CMD << 'PYEOF'
-import json
-conf_path = "frontend/src-tauri/tauri.conf.json"
-with open(conf_path, "r") as f:
-    conf = json.load(f)
-if "bundle" in conf:
-    conf["bundle"]["createUpdaterArtifacts"] = False
-with open(conf_path, "w") as f:
-    json.dump(conf, f, indent=2)
-    f.write("\n")
-print("Updated createUpdaterArtifacts to false")
-PYEOF
+            $PYTHON_CMD -c "import json; conf_path='frontend/src-tauri/tauri.conf.json'; f=open(conf_path,'r'); conf=json.load(f); f.close(); conf.get('bundle',{})['createUpdaterArtifacts']=False; f=open(conf_path,'w'); json.dump(conf,f,indent=2); f.write('\n'); f.close(); print('Updated createUpdaterArtifacts to false')"
             echo "::notice::Set createUpdaterArtifacts=false in tauri.conf.json"
           fi
         env:
