@@ -32,6 +32,10 @@ on:
         required: false
         type: boolean
         default: false
+      enable-updater-signing:
+        required: false
+        type: boolean
+        default: false
       repository:
         required: false
         type: string
@@ -52,10 +56,46 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        continue-on-error: true
         with:
           repository: ${{ inputs.repository }}
           ref: ${{ inputs.ref }}
           fetch-depth: 0
+
+      - name: Ensure repository checkout
+        shell: bash
+        env:
+          REPO: ${{ inputs.repository != '' && inputs.repository || github.repository }}
+          REF: ${{ inputs.ref }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          if git rev-parse --verify HEAD >/dev/null 2>&1; then
+            echo "Checkout succeeded."
+            exit 0
+          fi
+
+          echo "Checkout failed; retrying with manual fetch."
+          rm -rf .git
+          git init .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git"
+
+          if [[ -z "${REF}" ]]; then
+            REF="HEAD"
+          fi
+
+          for i in 1 2 3; do
+            if git fetch --no-tags --prune origin "${REF}" && git checkout FETCH_HEAD; then
+              echo "Manual checkout succeeded on attempt ${i}."
+              exit 0
+            fi
+            echo "Manual checkout attempt ${i} failed; retrying..."
+            sleep $((i * 5))
+          done
+
+          echo "Manual checkout failed after retries."
+          exit 1
 
       - name: Get version from tauri.conf.json.
         id: get-version
@@ -238,7 +278,7 @@ jobs:
           Get-ChildItem $runtimeDir -ErrorAction SilentlyContinue
 
       - name: Setup DigiCert Environment
-        if: contains(inputs.platform, 'windows') && inputs.sign-binaries
+        if: contains(inputs.platform, 'windows') && inputs.sign-binaries == true
         shell: pwsh
         run: |
           # Set environment variables
@@ -281,11 +321,11 @@ jobs:
           "SM_CLIENT_CERT_FILE=D:\Certificate_pkcs12.p12" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Setup DigiCert KeyLocker
-        if: contains(inputs.platform, 'windows') && inputs.sign-binaries
+        if: contains(inputs.platform, 'windows') && inputs.sign-binaries == true
         uses: digicert/ssm-code-signing@v1.1.1
 
       - name: Sync Certificate to Windows Certificate Store
-        if: contains(inputs.platform, 'windows') && inputs.sign-binaries
+        if: contains(inputs.platform, 'windows') && inputs.sign-binaries == true
         shell: pwsh
         run: |
           Write-Host "============================================================"
@@ -365,7 +405,7 @@ jobs:
           Write-Host ""
 
       - name: Verify DigiCert Setup
-        if: contains(inputs.platform, 'windows') && inputs.sign-binaries
+        if: contains(inputs.platform, 'windows') && inputs.sign-binaries == true
         shell: pwsh
         run: |
           Write-Host "=== DigiCert Setup Verification ==="
@@ -437,7 +477,7 @@ jobs:
         run: rustup target add ${{ inputs.target }}
 
       - name: Import Apple Developer Certificate
-        if: contains(inputs.platform, 'macos') && inputs.sign-binaries
+        if: contains(inputs.platform, 'macos') && inputs.sign-binaries == true
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -453,7 +493,7 @@ jobs:
           security find-identity -v -p codesigning build.keychain
 
       - name: Verify certificate
-        if: contains(inputs.platform, 'macos') && inputs.sign-binaries
+        if: contains(inputs.platform, 'macos') && inputs.sign-binaries == true
         run: |
           CERT_INFO=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application")
           CERT_ID=$(echo "$CERT_INFO" | awk -F'"' '{print $2}')
@@ -576,43 +616,37 @@ jobs:
           echo "Copied llama-helper to frontend/src-tauri/binaries/llama-helper-$TARGET"
           ls -la frontend/src-tauri/binaries/
 
-      # Conditionally export Tauri updater signing key (only if secret is configured)
-      # This avoids setting TAURI_SIGNING_PRIVATE_KEY to empty string, which causes
-      # Tauri to fail with "Missing comment in secret key" error.
-      # When no signing key is available, we also disable createUpdaterArtifacts
-      # in tauri.conf.json to prevent Tauri from failing when it tries to sign update bundles.
-      - name: Configure Tauri updater signing
-        shell: bash
+      - name: Disable code signing env for unsigned builds
+        if: inputs.sign-binaries != true
         run: |
-          if [ -n "$TAURI_KEY" ]; then
-            echo "TAURI_SIGNING_PRIVATE_KEY=$TAURI_KEY" >> $GITHUB_ENV
-            echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=$TAURI_KEY_PASSWORD" >> $GITHUB_ENV
-            echo "::notice::Tauri updater signing key configured - updater artifacts will be signed"
-          else
-            echo "::warning::TAURI_SIGNING_PRIVATE_KEY secret not configured - disabling updater artifacts"
-            # Disable createUpdaterArtifacts in tauri.conf.json so Tauri doesn't
-            # attempt to sign update bundles without a private key
-            # Use python3 with fallback to python (Windows compatibility)
-            PYTHON_CMD=$(command -v python3 || command -v python)
-            $PYTHON_CMD -c "import json; conf_path='frontend/src-tauri/tauri.conf.json'; f=open(conf_path,'r'); conf=json.load(f); f.close(); conf.get('bundle',{})['createUpdaterArtifacts']=False; f=open(conf_path,'w'); json.dump(conf,f,indent=2); f.write('\n'); f.close(); print('Updated createUpdaterArtifacts to false')"
-            echo "::notice::Set createUpdaterArtifacts=false in tauri.conf.json"
-          fi
-        env:
-          TAURI_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          echo "APPLE_ID=" >> $GITHUB_ENV
+          echo "APPLE_ID_PASSWORD=" >> $GITHUB_ENV
+          echo "APPLE_PASSWORD=" >> $GITHUB_ENV
+          echo "APPLE_TEAM_ID=" >> $GITHUB_ENV
+          echo "APPLE_CERTIFICATE=" >> $GITHUB_ENV
+          echo "APPLE_CERTIFICATE_PASSWORD=" >> $GITHUB_ENV
+          echo "APPLE_SIGNING_IDENTITY=" >> $GITHUB_ENV
+          echo "TAURI_SIGNING_PRIVATE_KEY=" >> $GITHUB_ENV
+          echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=" >> $GITHUB_ENV
+          echo "TAURI_BUNDLE_CREATE_UPDATER_ARTIFACTS=false" >> $GITHUB_ENV
 
       - name: Build with Tauri
         id: tauri-build
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_ID: ${{ inputs.sign-binaries && secrets.APPLE_ID || '' }}
-          APPLE_ID_PASSWORD: ${{ inputs.sign-binaries && secrets.APPLE_ID_PASSWORD || '' }}
-          APPLE_PASSWORD: ${{ inputs.sign-binaries && secrets.APPLE_PASSWORD || '' }}
-          APPLE_TEAM_ID: ${{ inputs.sign-binaries && secrets.APPLE_TEAM_ID || '' }}
-          APPLE_CERTIFICATE: ${{ inputs.sign-binaries && secrets.APPLE_CERTIFICATE || '' }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ inputs.sign-binaries && secrets.APPLE_CERTIFICATE_PASSWORD || '' }}
-          APPLE_SIGNING_IDENTITY: ${{ inputs.sign-binaries && env.CERT_ID || '' }}
+          APPLE_ID: ${{ inputs.sign-binaries == true && secrets.APPLE_ID || '' }}
+          APPLE_ID_PASSWORD: ${{ inputs.sign-binaries == true && secrets.APPLE_ID_PASSWORD || '' }}
+          APPLE_PASSWORD: ${{ inputs.sign-binaries == true && secrets.APPLE_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ inputs.sign-binaries == true && secrets.APPLE_TEAM_ID || '' }}
+          APPLE_CERTIFICATE: ${{ inputs.sign-binaries == true && secrets.APPLE_CERTIFICATE || '' }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ inputs.sign-binaries == true && secrets.APPLE_CERTIFICATE_PASSWORD || '' }}
+          APPLE_SIGNING_IDENTITY: ${{ inputs.sign-binaries == true && env.CERT_ID || '' }}
+          # Tauri updater signing (enabled only when sign-binaries=true AND private key is available)
+          TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.enable-updater-signing == true && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.enable-updater-signing == true && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
+          # Only create updater artifacts when updater signing is explicitly enabled and private key exists
+          TAURI_BUNDLE_CREATE_UPDATER_ARTIFACTS: ${{ inputs.enable-updater-signing == true && secrets.TAURI_SIGNING_PRIVATE_KEY != '' && 'true' || 'false' }}
           # License validation RSA public key (embedded at build time)
           MEETILY_RSA_PUBLIC_KEY: ${{ secrets.MEETILY_RSA_PUBLIC_KEY }}
           # Supabase configuration (for online license verification)
